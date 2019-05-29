@@ -1,0 +1,57 @@
+#!/bin/bash
+
+if [[ "${TERM}" != "linux" ]]; then
+	exit 0
+fi
+
+trap '' 2
+
+show_help() {
+echo "Smart Log Guard
+
+Usage: smartlogguard [-p password] [-w warning] [-t timeout]"
+}
+
+# A POSIX variable
+OPTIND=1         # Reset in case getopts has been used previously in the shell.
+
+# Initialize our own variables:
+password="x"
+warning="Wrong password or too slow."
+timeout=10
+
+while getopts "h?w:p:t:" opt; do
+    case "$opt" in
+        h|\?)
+	        show_help
+        	exit 0
+        	;;
+    	w)  warning=$OPTARG
+		;;
+        p)  password=$OPTARG
+        	;;
+	t)  timeout=$OPTARG
+		;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+[ "${1:-}" = "--" ] && shift
+
+start=$(date +%s)
+for i in $(seq 1 ${#password}); do
+	err=0
+	read -sn 1 -t 0.5 passchar || err=1
+	finish=$(date +%s)
+
+	if (( $(echo "$((finish - start)) < $timeout" | bc -l) )) && [[ $err -eq 0 ]] && [[ "$passchar" == "${password:i-1:1}" ]]; then
+		continue
+	fi
+	echo $warning
+	exit 1
+done
+
+trap 2
+
+# End of file
